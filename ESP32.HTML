@@ -2,15 +2,22 @@
 <html lang="en">
 
 <head>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Smart Tiffin Dashboard</title>
+  <title>Smart Tiffin Cloud</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- FIREBASE -->
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
 
@@ -213,6 +220,7 @@
     }
 
   </style>
+
 </head>
 
 <body>
@@ -228,26 +236,31 @@
     </div>
 
     <div class="subtitle">
-      IoT Food Heating Dashboard
+      IoT Cloud Heating Dashboard
     </div>
 
     <div class="status-box">
       <div class="dot"></div>
-      <span>ESP32 Connected</span>
+      <span>Firebase Connected</span>
     </div>
+
+    <!-- SWITCH -->
 
     <div class="switch-container">
 
       <h3>Power Control</h3>
 
       <label class="switch">
+
         <input type="checkbox" id="relaySwitch">
+
         <span class="slider"></span>
+
       </label>
 
     </div>
 
-    <!-- TIMER SECTION -->
+    <!-- TIMER -->
 
     <div class="timer-box">
 
@@ -258,7 +271,6 @@
         id="secondsInput"
         placeholder="Enter seconds"
         min="1"
-        max="7200"
       >
 
       <button onclick="startTimer()">
@@ -282,7 +294,7 @@
     </div>
 
     <div class="subtitle">
-      Realtime Countdown Monitor
+      Realtime Cloud Monitoring
     </div>
 
     <div class="countdown" id="countdown">
@@ -301,7 +313,7 @@
       </div>
 
       <div class="mini-card">
-        <p>WiFi Status</p>
+        <p>Internet Status</p>
         <h2>ONLINE</h2>
       </div>
 
@@ -313,13 +325,47 @@
 
 <script>
 
+  // =========================================
+  // FIREBASE CONFIG
+  // =========================================
+
+  const firebaseConfig = {
+
+    apiKey: "AIzaSyAMRlQOQDmjlTzfC0taIHnmiZVNIfI_Ln0",
+
+    authDomain: "smarttiffinesp32.firebaseapp.com",
+
+    databaseURL: "https://smarttiffinesp32-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+    projectId: "smarttiffinesp32",
+
+    storageBucket: "smarttiffinesp32.firebasestorage.app",
+
+    messagingSenderId: "131151782027",
+
+    appId: "1:131151782027:web:dd91dab416525a5f77348e"
+
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  const db = firebase.database();
+
+  // =========================================
+  // VARIABLES
+  // =========================================
+
   let countdownInterval;
+
   let totalSeconds = 0;
 
   const relaySwitch = document.getElementById('relaySwitch');
+
   const heaterStatus = document.getElementById('heaterStatus');
 
-  // MANUAL SWITCH CONTROL
+  // =========================================
+  // RELAY SWITCH CONTROL
+  // =========================================
 
   relaySwitch.addEventListener('change', () => {
 
@@ -327,30 +373,34 @@
 
       heaterStatus.innerText = 'ON';
 
-      fetch('http://172.17.162.235/relay/on');
+      db.ref("relay").set(1);
 
     }
     else{
 
       heaterStatus.innerText = 'OFF';
 
-      fetch('http://172.17.162.235/relay/off');
+      db.ref("relay").set(0);
 
     }
 
   });
 
+  // =========================================
   // START TIMER
+  // =========================================
 
   function startTimer(){
 
     const inputSeconds = parseInt(
+
       document.getElementById('secondsInput').value
+
     );
 
     if(isNaN(inputSeconds) || inputSeconds <= 0){
 
-      alert('Please enter valid seconds');
+      alert("Enter valid seconds");
 
       return;
 
@@ -358,9 +408,9 @@
 
     totalSeconds = inputSeconds;
 
-    // SEND TIMER TO ESP32
+    // SEND TIMER
 
-    fetch(`http://172.17.162.235/setTimer?time=${inputSeconds}`);
+    db.ref("timer").set(totalSeconds);
 
     // TURN ON RELAY
 
@@ -368,7 +418,7 @@
 
     heaterStatus.innerText = 'ON';
 
-    fetch('http://172.17.162.235/relay/on');
+    db.ref("relay").set(1);
 
     clearInterval(countdownInterval);
 
@@ -384,19 +434,15 @@
 
         clearInterval(countdownInterval);
 
-        // TURN OFF RELAY
-
         relaySwitch.checked = false;
 
         heaterStatus.innerText = 'OFF';
 
+        db.ref("relay").set(0);
+
         document.getElementById('countdown').innerText = '00:00:00';
 
-        fetch('http://172.17.162.235/relay/off');
-
-        // FOOD READY NOTIFICATION
-
-        alert('🍱 Your food is ready!');
+        alert("🍱 Food is Ready!");
 
       }
 
@@ -404,7 +450,9 @@
 
   }
 
-  // UPDATE COUNTDOWN DISPLAY
+  // =========================================
+  // UPDATE COUNTDOWN
+  // =========================================
 
   function updateCountdownDisplay(){
 
@@ -420,7 +468,33 @@
 
   }
 
+  // =========================================
+  // REALTIME STATUS SYNC
+  // =========================================
+
+  db.ref("relay").on("value",(snapshot)=>{
+
+    const value = snapshot.val();
+
+    if(value == 1){
+
+      relaySwitch.checked = true;
+
+      heaterStatus.innerText = 'ON';
+
+    }
+    else{
+
+      relaySwitch.checked = false;
+
+      heaterStatus.innerText = 'OFF';
+
+    }
+
+  });
+
 </script>
 
 </body>
+
 </html>
